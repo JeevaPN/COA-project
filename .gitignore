@@ -1,6 +1,13 @@
-﻿chess_dataset.parquet
+chess_dataset.parquet
 *.csv
 __pycache__/
 *.hex
 build/
 
+# simulation artifacts
+sim/*.out
+sim/*.vcd
+
+# generated weight files (regenerate from training/)
+weights/*.mem
+weights/positions.vh
