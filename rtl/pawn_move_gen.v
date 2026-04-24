@@ -1,22 +1,22 @@
 module pawn_move_gen(
     input  wire [63:0] pos, own, opp,
-    input  wire is_white,
+    input  wire        is_white,
     output wire [63:0] moves
 );
+    localparam [63:0] NOT_A  = 64'hFEFEFEFEFEFEFEFE;
+    localparam [63:0] NOT_H  = 64'h7F7F7F7F7F7F7F7F;
+    localparam [63:0] RANK_3 = 64'h0000000000FF0000;
+    localparam [63:0] RANK_6 = 64'h0000FF0000000000;
+
     wire [63:0] empty = ~(own | opp);
-    wire [63:0] not_a = 64'hFEFEFEFEFEFEFEFE;
-    wire [63:0] not_h = 64'h7F7F7F7F7F7F7F7F;
 
-    // --- WHITE PAWNS (Move Upwards: << 8) ---
-    wire [63:0] w_up1   = (pos << 8) & empty;
-    wire [63:0] w_up2   = ((w_up1 & 64'h00000000FF000000) << 8) & empty; // Double step from rank 2
-    wire [63:0] w_caps  = (((pos << 7) & not_h) | ((pos << 9) & not_a)) & opp; // Diagonal captures
+    wire [63:0] w_up1  = (pos << 8) & empty;
+    wire [63:0] w_up2  = ((w_up1 & RANK_3) << 8) & empty;
+    wire [63:0] w_caps = (((pos << 7) & NOT_H) | ((pos << 9) & NOT_A)) & opp;
 
-    // --- BLACK PAWNS (Move Downwards: >> 8) ---
-    wire [63:0] b_dn1   = (pos >> 8) & empty;
-    wire [63:0] b_dn2   = ((b_dn1 & 64'h000000FF00000000) >> 8) & empty; // Double step from rank 7
-    wire [63:0] b_caps  = (((pos >> 7) & not_a) | ((pos >> 9) & not_h)) & opp; // Diagonal captures
+    wire [63:0] b_dn1  = (pos >> 8) & empty;
+    wire [63:0] b_dn2  = ((b_dn1 & RANK_6) >> 8) & empty;
+    wire [63:0] b_caps = (((pos >> 7) & NOT_A) | ((pos >> 9) & NOT_H)) & opp;
 
     assign moves = is_white ? (w_up1 | w_up2 | w_caps) : (b_dn1 | b_dn2 | b_caps);
-
 endmodule
