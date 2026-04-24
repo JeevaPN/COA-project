@@ -1,23 +1,20 @@
 module make_move (
-    // Current board state (Inputs)
+    // Incoming board state bitboards
     input wire [63:0] wp_in, wn_in, wb_in, wr_in, wq_in, wk_in,
     input wire [63:0] bp_in, bn_in, bb_in, br_in, bq_in, bk_in,
-    
-    // Move parameters
-    input wire [63:0] from_mask, // 64-bit one-hot mask of the starting square
-    input wire [63:0] to_mask,   // 64-bit one-hot mask of the destination square
-    input wire [2:0] piece_type, // 0=Pawn, 1=Knight, 2=Bishop, 3=Rook, 4=Queen, 5=King
-    input wire white_to_move,    // 1 if White is moving, 0 if Black is moving
-    
-    // Next board state (Outputs)
+
+    // Move parameters (one-hot masks for squares)
+    input wire [63:0] from_mask, // source square mask
+    input wire [63:0] to_mask,   // destination square mask
+    input wire [2:0] piece_type, // 0=P,1=N,2=B,3=R,4=Q,5=K
+    input wire white_to_move,    // 1=white moves, 0=black moves
+
+    // Next board state
     output wire [63:0] wp_out, wn_out, wb_out, wr_out, wq_out, wk_out,
     output wire [63:0] bp_out, bn_out, bb_out, br_out, bq_out, bk_out
 );
 
-    // ------------------------------------------------------------------------
-    // INTERMEDIATE SIGNALS FOR FRIENDLY PIECE MOVEMENT
-    // ------------------------------------------------------------------------
-    // These compute the new bitboard for the piece making the move
+    // For the moving piece we clear its source bit and set the destination.
     wire [63:0] wp_moved = (wp_in & ~from_mask) | to_mask;
     wire [63:0] wn_moved = (wn_in & ~from_mask) | to_mask;
     wire [63:0] wb_moved = (wb_in & ~from_mask) | to_mask;
@@ -32,10 +29,7 @@ module make_move (
     wire [63:0] bq_moved = (bq_in & ~from_mask) | to_mask;
     wire [63:0] bk_moved = (bk_in & ~from_mask) | to_mask;
 
-    // ------------------------------------------------------------------------
-    // INTERMEDIATE SIGNALS FOR CAPTURES (ENEMY PIECES)
-    // ------------------------------------------------------------------------
-    // Note: If no piece was on to_mask, this safely does nothing.
+    // If a capture happened on to_mask, clear that bit from the captured side.
     wire [63:0] wp_capt = wp_in & ~to_mask;
     wire [63:0] wn_capt = wn_in & ~to_mask;
     wire [63:0] wb_capt = wb_in & ~to_mask;
@@ -50,15 +44,7 @@ module make_move (
     wire [63:0] bq_capt = bq_in & ~to_mask;
     wire [63:0] bk_capt = bk_in & ~to_mask;
 
-    // ------------------------------------------------------------------------
-    // OUTPUT ASSIGNMENTS (MUXING)
-    // ------------------------------------------------------------------------
-    // For each bitboard, it updates if it is the moving piece, 
-    // clears the to_square if it belongs to the enemy (getting captured),
-    // or remains unchanged.
-    
-    // Piece Types: P=0, N=1, B=2, R=3, Q=4, K=5
-
+    // Select the proper updated bitboard for each piece type and side.
     assign wp_out = (white_to_move && piece_type == 3'd0) ? wp_moved : (!white_to_move ? wp_capt : wp_in);
     assign wn_out = (white_to_move && piece_type == 3'd1) ? wn_moved : (!white_to_move ? wn_capt : wn_in);
     assign wb_out = (white_to_move && piece_type == 3'd2) ? wb_moved : (!white_to_move ? wb_capt : wb_in);

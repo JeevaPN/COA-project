@@ -1,34 +1,32 @@
 `timescale 1ns/1ps
 
+// Simple testbench to sanity-check knight generation and material eval
 module chess_tb;
-    
-    // Testbench Variables for Bitboards
+
+    // Bitboard registers for pieces
     reg [63:0] wp, wn, wb, wr, wq, wk;
     reg [63:0] bp, bn, bb, br, bq, bk;
     reg [63:0] own_pieces;
 
-    // Outputs
+    // Outputs from DUTs
     wire [63:0] possible_knight_moves;
     wire signed [15:0] material_score;
 
-    // Instantiate Knight Move Generator
+    // Knight move generator instance
     knight_move_gen kmg (
-        .knight_pos(wn),       // White knights
-        .own_pieces(own_pieces), // Own pieces bitboard to avoid capturing own team
+        .knight_pos(wn),
+        .own_pieces(own_pieces),
         .possible_moves(possible_knight_moves)
     );
 
-    // Instantiate Material Evaluation Engine
+    // Material evaluation instance
     material_eval me (
-        // White pieces
         .wp(wp), .wn(wn), .wb(wb), .wr(wr), .wq(wq), .wk(wk),
-        // Black pieces
         .bp(bp), .bn(bn), .bb(bb), .br(br), .bq(bq), .bk(bk),
-        // Output Score
         .material_score(material_score)
     );
 
-    // ASCII Renderer Task
+    // Pretty ASCII board printer for quick visual checks
     task display_board;
         integer r, f;
         reg [63:0] square_mask;
@@ -36,15 +34,12 @@ module chess_tb;
         begin
             $display("   A B C D E F G H");
             $display("  -----------------");
-            // Loop through ranks 8 down to 1
             for (r = 7; r >= 0; r = r - 1) begin
                 $write("%0d |", r + 1);
-                // Loop through files A to H
                 for (f = 0; f < 8; f = f + 1) begin
                     square_mask = 64'b1 << (r * 8 + f);
                     piece_char = ".";
 
-                    // Determine if any bitboard has a piece on this square
                     if      (wp & square_mask) piece_char = "P";
                     else if (wn & square_mask) piece_char = "N";
                     else if (wb & square_mask) piece_char = "B";
@@ -57,7 +52,7 @@ module chess_tb;
                     else if (br & square_mask) piece_char = "r";
                     else if (bq & square_mask) piece_char = "q";
                     else if (bk & square_mask) piece_char = "k";
-                    
+
                     $write("%c ", piece_char);
                 end
                 $display("| %0d", r + 1);
@@ -67,12 +62,11 @@ module chess_tb;
         end
     endtask
 
-    // Simulation Sequence
     initial begin
         $dumpfile("chess.vcd");
         $dumpvars(0, chess_tb);
 
-        // Standard Starting Position Initialization
+        // Standard chess starting position
         wp = 64'h000000000000FF00;
         wn = 64'h0000000000000042;
         wb = 64'h0000000000000024;
@@ -87,16 +81,15 @@ module chess_tb;
         bq = 64'h0800000000000000;
         bk = 64'h1000000000000000;
 
-        // Populate white's own pieces mask
         own_pieces = wp | wn | wb | wr | wq | wk;
 
         $display("======= Initial State =======");
         display_board();
         #10;
-        $display("Material Score: %0d (Positive=White Edge, Negative=Black Edge)", material_score);
+        $display("Material Score: %0d (Positive = White advantage)", material_score);
         $display("Possible Knight Moves Bitboard: %h", possible_knight_moves);
 
-        // Move a white knight to F3 (square 21) from G1 (square 6)
+        // Example: move a knight from G1 to F3
         wn = (wn & ~64'h0000000000000040) | 64'h0000000000200000;
         own_pieces = wp | wn | wb | wr | wq | wk;
         
