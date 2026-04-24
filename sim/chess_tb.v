@@ -1,32 +1,23 @@
 `timescale 1ns/1ps
-
-// Simple testbench to sanity-check knight generation and material eval
 module chess_tb;
-
-    // Bitboard registers for pieces
     reg [63:0] wp, wn, wb, wr, wq, wk;
     reg [63:0] bp, bn, bb, br, bq, bk;
     reg [63:0] own_pieces;
-
-    // Outputs from DUTs
     wire [63:0] possible_knight_moves;
     wire signed [15:0] material_score;
 
-    // Knight move generator instance
     knight_move_gen kmg (
         .knight_pos(wn),
         .own_pieces(own_pieces),
         .possible_moves(possible_knight_moves)
     );
 
-    // Material evaluation instance
     material_eval me (
         .wp(wp), .wn(wn), .wb(wb), .wr(wr), .wq(wq), .wk(wk),
         .bp(bp), .bn(bn), .bb(bb), .br(br), .bq(bq), .bk(bk),
         .material_score(material_score)
     );
 
-    // Pretty ASCII board printer for quick visual checks
     task display_board;
         integer r, f;
         reg [63:0] square_mask;
@@ -39,7 +30,6 @@ module chess_tb;
                 for (f = 0; f < 8; f = f + 1) begin
                     square_mask = 64'b1 << (r * 8 + f);
                     piece_char = ".";
-
                     if      (wp & square_mask) piece_char = "P";
                     else if (wn & square_mask) piece_char = "N";
                     else if (wb & square_mask) piece_char = "B";
@@ -52,7 +42,6 @@ module chess_tb;
                     else if (br & square_mask) piece_char = "r";
                     else if (bq & square_mask) piece_char = "q";
                     else if (bk & square_mask) piece_char = "k";
-
                     $write("%c ", piece_char);
                 end
                 $display("| %0d", r + 1);
@@ -65,40 +54,31 @@ module chess_tb;
     initial begin
         $dumpfile("chess.vcd");
         $dumpvars(0, chess_tb);
-
-        // Standard chess starting position
         wp = 64'h000000000000FF00;
         wn = 64'h0000000000000042;
         wb = 64'h0000000000000024;
         wr = 64'h0000000000000081;
         wq = 64'h0000000000000008;
         wk = 64'h0000000000000010;
-
         bp = 64'h00FF000000000000;
         bn = 64'h4200000000000000;
         bb = 64'h2400000000000000;
         br = 64'h8100000000000000;
         bq = 64'h0800000000000000;
         bk = 64'h1000000000000000;
-
         own_pieces = wp | wn | wb | wr | wq | wk;
-
         $display("======= Initial State =======");
         display_board();
         #10;
         $display("Material Score: %0d (Positive = White advantage)", material_score);
         $display("Possible Knight Moves Bitboard: %h", possible_knight_moves);
-
-        // Example: move a knight from G1 to F3
         wn = (wn & ~64'h0000000000000040) | 64'h0000000000200000;
         own_pieces = wp | wn | wb | wr | wq | wk;
-        
         $display("\n======= After 1. Nf3 =======");
         display_board();
         #10;
         $display("Material Score: %0d", material_score);
         $display("Possible Knight Moves Bitboard: %h\n", possible_knight_moves);
-        
         $finish;
     end
 endmodule

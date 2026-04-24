@@ -1,6 +1,3 @@
-// High-level search finite-state machine
-// Orchestrates quick move ordering (fast path) and the NN leaf evaluations
-// Comments written in a conversational, human style for readability.
 module chess_fsm (
     input wire clk,
     input wire reset,
@@ -22,9 +19,7 @@ module chess_fsm (
     output reg signed [31:0] best_move_score
 );
 
-    // -------------------------------------------------------------------------
-    // FSM state encoding (self-descriptive names)
-    // -------------------------------------------------------------------------
+    // FSM state encoding
     localparam STATE_IDLE             = 3'd0;
     localparam STATE_DESCEND_DECISION = 3'd1; // Use Fast_Score to sort & pick move (simulate Make Move)
     localparam STATE_CHECK_DEPTH      = 3'd2; // Are we at a leaf node?
@@ -36,10 +31,7 @@ module chess_fsm (
     reg [3:0] current_depth;
     reg signed [31:0] current_alpha; // Best score found so far
 
-    // -------------------------------------------------------------------------
-    // Sequential logic: state transitions and main registers
-    // The big always block below drives the search flow.
-    // -------------------------------------------------------------------------
+    // Sequential logic: state transitions and registers
     always @(posedge clk or posedge reset) begin
         if (reset) begin
             state <= STATE_IDLE;
@@ -51,9 +43,7 @@ module chess_fsm (
         end else begin
             case (state)
                 
-                // =========================================================
-                // 1. IDLE - wait for an external "start search" request
-                // =========================================================
+                // 1. IDLE
                 STATE_IDLE: begin
                     search_done <= 1'b0;
                     if (start_search) begin
@@ -63,13 +53,9 @@ module chess_fsm (
                     end
                 end
 
-                // =========================================================
-                // 2. DESCEND - pick a promising move using the fast heuristic
-                // =========================================================
+                // 2. DESCEND
                 STATE_DESCEND_DECISION: begin
-                    // In a real design we'd sample material+pst (fast_score)
-                    // to pick a move and apply it. Think of this as the
-                    // lightweight move ordering that runs in one cycle.
+                    
                     current_depth <= current_depth + 1;
                     state <= STATE_CHECK_DEPTH;
                 end
@@ -87,19 +73,13 @@ module chess_fsm (
                     end
                 end
 
-                // =========================================================
-                // 4. Trigger the NN leaf evaluator (slow, but deep)
-                // =========================================================
+                // 4. Trigger the NN leaf evaluator
                 STATE_LEAF_EVAL_START: begin
-                    // Pulse the neural network accelerator to start work.
-                    // The accelerator will assert `nn_eval_ready` when done.
                     nn_start <= 1'b1;
                     state <= STATE_NNUE_WAIT;
                 end
 
-                // =========================================================
-                // 5. Wait for NN result and update our running best (alpha)
-                // =========================================================
+                // 5. WAIT FOR NN
                 STATE_NNUE_WAIT: begin
                     nn_start <= 1'b0; // De-assert start
                     // We literally pause the search tree and do nothing until the 
@@ -114,9 +94,7 @@ module chess_fsm (
                     end
                 end
 
-                // =========================================================
-                // 6. Bubble up the result: undo the move and continue search
-                // =========================================================
+                // 6. BUBBLE UP
                 STATE_BUBBLE_UP: begin
                     // Restore the board bitboards from 1 move ago (Unmake Move)
                     current_depth <= current_depth - 1;

@@ -1,7 +1,3 @@
-"""Split weights/nnue_weights.hex into weights.mem (8-bit) and biases.mem (32-bit).
-
-Run from repo root:  python3 training/split_hex.py
-"""
 from pathlib import Path
 
 root = Path(__file__).resolve().parent.parent
