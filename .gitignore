@@ -1,10 +1,7 @@
-chess_dataset.parquet
-*.csv
+*.vcd
+sim/*.out
 __pycache__/
 *.hex
+*.csv
+dataset/
 build/
-
-# simulation artifacts
-sim/*.out
-sim/*.vcd
-
