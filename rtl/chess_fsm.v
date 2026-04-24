@@ -1,85 +1,80 @@
 module chess_fsm (
-    input wire clk,
-    input wire reset,
-    input wire start_search,
-    input wire [3:0] target_depth,
-
-    input wire [15:0] fast_score,
-
-    output reg nn_start,
-    input wire nn_eval_ready,
-    input wire signed [31:0] deep_score,
-
-    output reg search_done,
-    output reg signed [31:0] best_move_score
+    input  wire        clk,
+    input  wire        reset,
+    input  wire        start_search,
+    input  wire [3:0]  target_depth,
+    input  wire [15:0] fast_score,
+    output reg         nn_start,
+    input  wire        nn_eval_ready,
+    input  wire signed [31:0] deep_score,
+    output reg         search_done,
+    output reg  signed [31:0] best_move_score
 );
+    localparam IDLE    = 3'd0,
+               DESCEND = 3'd1,
+               CHECK   = 3'd2,
+               LEAF    = 3'd3,
+               WAIT_NN = 3'd4,
+               BUBBLE  = 3'd5;
 
-    localparam STATE_IDLE = 3'd0;
-    localparam STATE_DESCEND_DECISION = 3'd1;
-    localparam STATE_CHECK_DEPTH = 3'd2;
-    localparam STATE_LEAF_EVAL_START = 3'd3;
-    localparam STATE_NNUE_WAIT = 3'd4;
-    localparam STATE_BUBBLE_UP = 3'd5;
+    localparam signed [31:0] NEG_INF = -32'sd1000000;
 
-    reg [2:0] state, next_state;
-    reg [3:0] current_depth;
-    reg signed [31:0] current_alpha;
+    reg [2:0] state;
+    reg [3:0] depth;
+    reg signed [31:0] alpha;
 
     always @(posedge clk or posedge reset) begin
         if (reset) begin
-            state <= STATE_IDLE;
-            current_depth <= 4'd0;
-            current_alpha <= -32'd1000000;
-            search_done <= 1'b0;
-            nn_start <= 1'b0;
+            state           <= IDLE;
+            depth           <= 0;
+            alpha           <= NEG_INF;
+            nn_start        <= 0;
+            search_done     <= 0;
             best_move_score <= 0;
         end else begin
             case (state)
-                STATE_IDLE: begin
-                    search_done <= 1'b0;
+                IDLE: begin
+                    search_done <= 0;
                     if (start_search) begin
-                        state <= STATE_DESCEND_DECISION;
-                        current_depth <= 4'd0;
-                        current_alpha <= -32'd1000000;
+                        depth <= 0;
+                        alpha <= NEG_INF;
+                        state <= DESCEND;
                     end
                 end
-                STATE_DESCEND_DECISION: begin
-                    current_depth <= current_depth + 1;
-                    state <= STATE_CHECK_DEPTH;
+
+                DESCEND: begin
+                    depth <= depth + 1;
+                    state <= CHECK;
                 end
-                STATE_CHECK_DEPTH: begin
-                    if (current_depth == target_depth) begin
-                        state <= STATE_LEAF_EVAL_START;
-                    end else begin
-                        state <= STATE_DESCEND_DECISION;
-                    end
+
+                CHECK: state <= (depth == target_depth) ? LEAF : DESCEND;
+
+                LEAF: begin
+                    nn_start <= 1;
+                    state    <= WAIT_NN;
                 end
-                STATE_LEAF_EVAL_START: begin
-                    nn_start <= 1'b1;
-                    state <= STATE_NNUE_WAIT;
-                end
-                STATE_NNUE_WAIT: begin
-                    nn_start <= 1'b0;
+
+                WAIT_NN: begin
+                    nn_start <= 0;
                     if (nn_eval_ready) begin
-                        if (deep_score > current_alpha) begin
-                            current_alpha <= deep_score;
-                        end
-                        state <= STATE_BUBBLE_UP;
+                        if (deep_score > alpha) alpha <= deep_score;
+                        state <= BUBBLE;
                     end
                 end
-                STATE_BUBBLE_UP: begin
-                    current_depth <= current_depth - 1;
-                    if (current_depth == 4'd1) begin
-                        best_move_score <= current_alpha;
-                        search_done <= 1'b1;
-                        state <= STATE_IDLE;
+
+                BUBBLE: begin
+                    depth <= depth - 1;
+                    if (depth == 4'd1) begin
+                        best_move_score <= alpha;
+                        search_done     <= 1;
+                        state           <= IDLE;
                     end else begin
-                        state <= STATE_DESCEND_DECISION;
+                        state <= DESCEND;
                     end
                 end
-                default: state <= STATE_IDLE;
+
+                default: state <= IDLE;
             endcase
         end
     end
-
 endmodule
