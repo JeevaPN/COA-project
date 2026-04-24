@@ -8,6 +8,3 @@ build/
 sim/*.out
 sim/*.vcd
 
-# generated weight files (regenerate from training/)
-weights/*.mem
-weights/positions.vh
